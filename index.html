@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GlyphForge — Font Editor</title>
+<style>
+:root{--red:#ed1c24;--blue:#00bfff;--bg:#111315;--panel:#1b1e21;--panel2:#24282c;--line:#363b40;--text:#f4f5f6;--muted:#a4abb2;--green:#00d47b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Roboto,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);background:#262a2e;color:var(--text);border-radius:7px;padding:9px 12px;transition:.18s}button:hover{border-color:var(--blue);background:#30363b}button:active{transform:translateY(1px)}button.primary{background:var(--red);border-color:var(--red);color:white;font-weight:700}button.primary:hover{background:#cf151c}button.active{border-color:var(--blue);color:var(--blue);background:#102a33}.app{max-width:1440px;margin:auto;padding:20px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}.brand{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;background:var(--red);display:grid;place-items:center;border-radius:8px;font-weight:900;font-size:20px}.brand h1{font-size:18px;margin:0;letter-spacing:.02em}.brand small{color:var(--muted);display:block;margin-top:3px}.actions{display:flex;gap:8px;flex-wrap:wrap}.status{background:#171a1d;border:1px solid var(--line);border-radius:8px;padding:10px 13px;color:var(--muted);display:flex;gap:12px;align-items:center;margin-bottom:14px}.dot{width:7px;height:7px;border-radius:50%;background:var(--red)}.dot.ok{background:var(--green)}.layout{display:grid;grid-template-columns:280px minmax(0,1fr) 250px;gap:14px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.panel-head{padding:13px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-weight:700}.panel-body{padding:13px}.search{width:100%;background:#101214;border:1px solid var(--line);border-radius:7px;color:white;padding:10px;margin-bottom:10px;outline:none}.search:focus,input:focus,select:focus{border-color:var(--blue);outline:1px solid #00bfff44}.glyph-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-height:570px;overflow:auto}.glyph{height:47px;padding:3px;background:#121518;border:1px solid #30363b;border-radius:5px;display:grid;place-items:center;font-size:22px;font-family:serif}.glyph.selected{border:1px solid var(--red);background:#35191b;box-shadow:inset 0 0 0 1px #ed1c2444}.glyph .code{font:9px monospace;color:#8d969e;align-self:end}.center{min-width:0}.toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:11px;border-bottom:1px solid var(--line)}.toolgroup{display:flex;gap:5px;padding-right:8px;margin-right:3px;border-right:1px solid var(--line)}.toolgroup:last-child{border:0}.tool{padding:8px 10px;font-size:12px}.workarea{padding:16px}.canvas-wrap{background:#101214;border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;place-items:center;position:relative}.canvas-wrap canvas{width:min(100%,520px);height:auto;aspect-ratio:1;image-rendering:pixelated;touch-action:none;cursor:crosshair;background-color:#fff;background-image:linear-gradient(45deg,#e9e9e9 25%,transparent 25%),linear-gradient(-45deg,#e9e9e9 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e9e9e9 75%),linear-gradient(-45deg,transparent 75%,#e9e9e9 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}.canvas-meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font:11px monospace;margin-top:10px}.side-section{padding:13px;border-bottom:1px solid var(--line)}.side-section:last-child{border:0}.side-section h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px}.field{margin:10px 0}.field label{display:flex;justify-content:space-between;color:#c6cbd0;font-size:12px;margin-bottom:6px}.field input[type=range]{width:100%;accent-color:var(--red)}.field input[type=number],.field input[type=text],.field select{width:100%;background:#101214;border:1px solid var(--line);border-radius:6px;color:white;padding:8px}.swatches{display:flex;gap:7px;align-items:center}.swatches input{width:35px;height:30px;border:0;background:none;padding:0}.preview{background:#101214;border:1px solid var(--line);border-radius:7px;padding:15px;margin-top:10px;min-height:95px;display:grid;place-items:center;overflow:hidden}.preview span{font-size:52px;line-height:1}.hint{color:var(--muted);font-size:11px;line-height:1.5}.footer{color:#77818a;font-size:11px;text-align:center;padding:18px 0}.hidden{display:none!important}.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#24292d;border:1px solid var(--line);padding:11px 16px;border-radius:8px;z-index:20;box-shadow:0 8px 30px #0008}.filelabel{display:inline-flex}.filelabel input{display:none}
+@media(max-width:1000px){.layout{grid-template-columns:230px minmax(0,1fr)}.right{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}}@media(max-width:650px){.app{padding:10px}.layout{grid-template-columns:1fr}.left{order:2}.center{order:1}.right{order:3;grid-template-columns:1fr}.glyph-grid{grid-template-columns:repeat(8,1fr);max-height:260px}.glyph{height:42px}.toolbar{gap:4px}.tool{padding:8px}.actions{width:100%}.actions button,.actions label{flex:1}.brand h1{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+ <div class="brand"><div class="mark">G</div><div><h1>GLYPHFORGE <span style="color:var(--red)">/</span> FONT EDITOR</h1><small>Import · Edit · Save · Export TTF</small></div></div>
+ <div class="actions">
+  <label class="filelabel"><input id="fontFile" type="file" accept=".ttf,.otf,font/ttf,font/otf"><button class="primary" onclick="document.getElementById('fontFile').click()">Import .TTF / .OTF</button></label>
+  <button id="exportBtn" class="primary" disabled>Export .TTF</button>
+ </div>
+</header>
+<div class="status"><span id="dot" class="dot"></span><span id="fontStatus">No font loaded — import a TTF or OTF file to begin.</span><span style="margin-left:auto" id="countLabel">0 glyphs</span></div>
+<div class="layout">
+ <section class="panel left"><div class="panel-head">GLYPH LIBRARY <span id="glyphCount" style="color:var(--muted);font:11px monospace">—</span></div><div class="panel-body"><input id="filter" class="search" placeholder="Search character / Unicode…" /><div id="glyphGrid" class="glyph-grid"><div class="hint" style="grid-column:1/-1">Your imported font's characters will appear here.</div></div></div></section>
+ <section class="panel center">
+  <div class="panel-head"><span>GLYPH WORKSPACE</span><span id="selectedInfo" style="font:11px monospace;color:var(--muted)">NO GLYPH SELECTED</span></div>
+  <div class="toolbar">
+   <div class="toolgroup"><button class="tool active" data-tool="pencil">Pencil</button><button class="tool" data-tool="eraser">Eraser</button><button class="tool" data-tool="line">Line</button><button class="tool" data-tool="rect">Rect</button></div>
+   <div class="toolgroup"><button class="tool" id="undo">Undo</button><button class="tool" id="redo">Redo</button><button class="tool" id="clear">Clear</button></div>
+   <div class="toolgroup"><button class="tool" id="rotate">Rotate 90°</button><button class="tool" id="flipH">Flip H</button><button class="tool" id="flipV">Flip V</button></div>
+   <div class="toolgroup"><button class="tool" id="crop">Crop to ink</button><button class="tool" id="invert">Invert</button></div>
+  </div>
+  <div class="workarea"><div class="canvas-wrap"><canvas id="canvas" width="192" height="192"></canvas></div><div class="canvas-meta"><span>192 × 192 PX · MONOCHROME GLYPH</span><span id="coords">X: — Y: —</span></div>
+   <div class="preview"><span id="livePreview">A</span></div>
+   <div class="hint" style="margin-top:9px">Draw directly on the glyph. Use crop to remove empty margins. Changes are stored per character and included in the exported font.</div>
+  </div>
+ </section>
+ <aside class="panel right">
+  <div class="side-section"><h3>Brush & appearance</h3>
+   <div class="field"><label>Brush size <b id="brushVal">3 px</b></label><input id="brush" type="range" min="1" max="24" value="3"></div>
+   <div class="field"><label>Ink colour <span>Preview only</span></label><div class="swatches"><input id="inkColor" type="color" value="#ed1c24"><span class="hint">TTF glyph outlines export as monochrome shapes.</span></div></div>
+   <div class="field"><label>Preview background</label><input id="bgColor" type="color" value="#ffffff"></div>
+  </div>
+  <div class="side-section"><h3>Transform</h3>
+   <div class="field"><label>Horizontal stretch <b id="sxVal">100%</b></label><input id="sx" type="range" min="25" max="250" value="100"></div>
+   <div class="field"><label>Vertical stretch <b id="syVal">100%</b></label><input id="sy" type="range" min="25" max="250" value="100"></div>
+   <button id="applyScale" style="width:100%">Apply stretch</button>
+   <div class="field"><label>Move X / Y (px)</label><div style="display:flex;gap:6px"><input id="moveX" type="number" value="0" min="-100" max="100"><input id="moveY" type="number" value="0" min="-100" max="100"></div></div>
+   <button id="applyMove" style="width:100%">Apply position</button>
+  </div>
+  <div class="side-section"><h3>Glyph metrics</h3>
+   <div class="field"><label>Advance width (font units)</label><input id="advance" type="number" min="0" step="1" value="1200"></div>
+   <div class="field"><label>Side bearing (font units)</label><input id="bearing" type="number" step="1" value="0"></div>
+   <p class="hint">Metrics affect spacing in the exported font. Original values are loaded for each glyph.</p>
+  </div>
+  <div class="side-section"><h3>Font preview</h3><div id="sampleText" class="hint">The quick brown fox jumps over the lazy dog. 0123456789</div></div>
+ </aside>
+</div>
+<div class="footer">GLYPHFORGE · LOCAL BROWSER EDITOR · YOUR FONT FILE STAYS ON YOUR DEVICE</div>
+</div>
+<div id="toast" class="toast hidden"></div>
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script>
+(()=> {
+const $=id=>document.getElementById(id), canvas=$('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+let font=null, glyphs=[], current=null, tool='pencil', drawing=false,start=null,undoStack=[],redoStack=[],edits=new Map(), originalFileName='EditedFont';
+const W=192,H=192,BASE=144,OX=24;
+function toast(s){$('toast').textContent=s;$('toast').classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.add('hidden'),2300)}
+function snapshot(){if(!current)return;undoStack.push(ctx.getImageData(0,0,W,H));if(undoStack.length>40)undoStack.shift();redoStack=[]}
+function saveCurrent(){if(!current)return;edits.set(current.code,{data:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0})}
+function drawInitial(g){ctx.clearRect(0,0,W,H);ctx.fillStyle='#000';let ch=String.fromCodePoint(g.code);let p=font.getPath(ch,OX,BASE,BASE);p.draw(ctx);let e=edits.get(g.code);if(e){ctx.putImageData(e.data,0,0);$('advance').value=e.advance;$('bearing').value=e.bearing}else{$('advance').value=g.advance;$('bearing').value=g.leftBearing||0}undoStack=[];redoStack=[];updatePreview()}
+function updatePreview(){if(!current)return;let c=document.createElement('canvas');c.width=96;c.height=96;let x=c.getContext('2d');x.drawImage(canvas,0,0,96,96);$('livePreview').style.color=$('inkColor').value;$('livePreview').style.background=$('bgColor').value;$('livePreview').style.padding='8px';$('livePreview').style.fontFamily='sans-serif';$('livePreview').textContent=String.fromCodePoint(current.code);$('selectedInfo').textContent=`U+${current.code.toString(16).toUpperCase().padStart(4,'0')} · ${current.name}`;}
+function renderList(){let q=$('filter').value.toLowerCase(),list=glyphs.filter(g=>String.fromCodePoint(g.code).toLowerCase().includes(q)||g.code.toString(16).includes(q)||g.name.toLowerCase().includes(q));$('glyphGrid').innerHTML='';for(let g of list){let b=document.createElement('button');b.className='glyph'+(current&&current.code===g.code?' selected':'');let ch=String.fromCodePoint(g.code);b.innerHTML=`<span>${ch===' '?'␠':escapeHtml(ch)}</span><span class="code">${g.code.toString(16).toUpperCase()}</span>`;b.title=`${g.name} · U+${g.code.toString(16).toUpperCase()}`;b.onclick=()=>selectGlyph(g);$('glyphGrid').appendChild(b)}$('glyphCount').textContent=list.length+' shown'}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function selectGlyph(g){saveCurrent();current=g;drawInitial(g);renderList()}
+$('fontFile').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;try{let buf=await f.arrayBuffer();font=opentype.parse(buf);originalFileName=f.name.replace(/\.(ttf|otf)$/i,'');glyphs=[];edits.clear();let cmap=font.tables.cmap.glyphIndexMap;for(let [cp,idx] of Object.entries(cmap)){let n=+cp;if(!Number.isInteger(n)||n>0x10ffff)continue;let og=font.glyphs.get(idx);glyphs.push({code:n,index:idx,name:og.name||'uni'+n.toString(16),advance:og.advanceWidth??font.unitsPerEm,leftBearing:og.leftSideBearing||0})}glyphs.sort((a,b)=>a.code-b.code);$('fontStatus').textContent=`${f.name} · ${font.unitsPerEm} UPM · ${font.names.fontFamily?.en||'Imported font'}`;$('dot').classList.add('ok');$('countLabel').textContent=glyphs.length+' mapped characters';$('exportBtn').disabled=false;$('filter').value='';renderList();if(glyphs.length)selectGlyph(glyphs.find(g=>g.code===65)||glyphs[0]);toast('Font imported successfully')}catch(err){console.error(err);toast('Could not read font: '+err.message)}});
+$('filter').oninput=renderList;
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('[data-tool]').forEach(x=>x.classList.toggle('active',x===b));canvas.style.cursor=tool==='pencil'||tool==='eraser'?'crosshair':'cell'});
+$('brush').oninput=e=>$('brushVal').textContent=e.target.value+' px';
+$('bgColor').oninput=e=>canvas.style.backgroundColor=e.target.value;
+function pos(e){let r=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(W-1,Math.floor((e.clientX-r.left)*W/r.width))),y:Math.max(0,Math.min(H-1,Math.floor((e.clientY-r.top)*H/r.height)))}}
+function stroke(a,b,erase=false){ctx.save();ctx.strokeStyle=erase?'rgba(0,0,0,0)':'#000';ctx.fillStyle='#000';ctx.lineWidth=+$('brush').value;ctx.lineCap='round';ctx.lineJoin='round';if(erase)ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.restore()}
+function shape(a,b){ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=+$('brush').value;ctx.beginPath();if(tool==='line'){ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y)}else ctx.rect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.stroke();ctx.restore()}
+canvas.addEventListener('pointerdown',e=>{if(!current)return;canvas.setPointerCapture(e.pointerId);snapshot();drawing=true;start=pos(e);$('coords').textContent=`X: ${start.x} Y: ${start.y}`;if(tool==='pencil'||tool==='eraser')stroke(start,start,tool==='eraser')});
+canvas.addEventListener('pointermove',e=>{let p=pos(e);$('coords').textContent=`X: ${p.x} Y: ${p.y}`;if(!drawing)return;if(tool==='pencil'||tool==='eraser')stroke(start,p,tool==='eraser'),start=p});
+canvas.addEventListener('pointerup',e=>{if(!drawing)return;let p=pos(e);if(tool==='line'||tool==='rect')shape(start,p);drawing=false;saveCurrent();updatePreview()});
+$('undo').onclick=()=>{if(!undoStack.length)return;redoStack.push(ctx.getImageData(0,0,W,H));ctx.putImageData(undoStack.pop(),0,0);saveCurrent();updatePreview()};
+$('redo').onclick=()=>{if(!redoStack.length)return;undoStack.push(ctx.getImageData(0,0,W,H));ctx.putImageData(redoStack.pop(),0,0);saveCurrent();updatePreview()};
+$('clear').onclick=()=>{if(!current)return;snapshot();ctx.clearRect(0,0,W,H);saveCurrent();updatePreview()};
+function transform(fn){if(!current)return;snapshot();let tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;let t=tmp.getContext('2d');fn(t);ctx.clearRect(0,0,W,H);ctx.drawImage(tmp,0,0);saveCurrent();updatePreview()}
+$('rotate').onclick=()=>transform(t=>{t.translate(W/2,H/2);t.rotate(Math.PI/2);t.drawImage(canvas,-W/2,-H/2)});
+$('flipH').onclick=()=>transform(t=>{t.translate(W,0);t.scale(-1,1);t.drawImage(canvas,0,0)});
+$('flipV').onclick=()=>transform(t=>{t.translate(0,H);t.scale(1,-1);t.drawImage(canvas,0,0)});
+$('invert').onclick=()=>{if(!current)return;snapshot();let im=ctx.getImageData(0,0,W,H);for(let i=0;i<im.data.length;i+=4)if(im.data[i+3]){let v=im.data[i]<128?255:0;im.data[i]=im.data[i+1]=im.data[i+2]=v;if(v===255)im.data[i+3]=0}ctx.putImageData(im,0,0);saveCurrent();updatePreview()};
+$('crop').onclick=()=>{if(!current)return;let im=ctx.getImageData(0,0,W,H),d=im.data,minX=W,minY=H,maxX=-1,maxY=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(d[(y*W+x)*4+3]>0){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}if(maxX<0)return toast('Glyph is empty');snapshot();let tmp=ctx.getImageData(minX,minY,maxX-minX+1,maxY-minY+1);ctx.clearRect(0,0,W,H);ctx.putImageData(tmp,Math.round((W-tmp.width)/2),Math.round((H-tmp.height)/2));saveCurrent();updatePreview()};
+$('applyScale').onclick=()=>{let sx=+$('sx').value/100,sy=+$('sy').value/100;transform(t=>{t.translate(W/2,H/2);t.scale(sx,sy);t.drawImage(canvas,-W/2,-H/2)});$('sxVal').textContent=$('sx').value+'%';$('syVal').textContent=$('sy').value+'%'};
+$('sx').oninput=e=>$('sxVal').textContent=e.target.value+'%';$('sy').oninput=e=>$('syVal').textContent=e.target.value+'%';
+$('applyMove').onclick=()=>{let x=+$('moveX').value,y=+$('moveY').value;transform(t=>t.drawImage(canvas,x,y))};
+$('advance').onchange=saveCurrent;$('bearing').onchange=saveCurrent;$('inkColor').oninput=updatePreview;
+$('exportBtn').onclick=()=>{if(!font)return;saveCurrent();try{let gs=[],notdef=new opentype.Glyph({name:'.notdef',unicode:0,advanceWidth:font.unitsPerEm,path:new opentype.Path()});gs.push(notdef);let seen=new Set([0]);for(let g of glyphs){if(seen.has(g.code))continue;seen.add(g.code);let edit=edits.get(g.code),old=font.glyphs.get(g.index),path;if(edit){path=bitmapPath(edit.data,font.unitsPerEm);gs.push(new opentype.Glyph({name:g.name,unicode:g.code,advanceWidth:edit.advance,leftSideBearing:edit.bearing,path}));}else{let commands=old.path.commands.map(c=>({...c}));let p=new opentype.Path();p.commands=commands;gs.push(new opentype.Glyph({name:g.name,unicode:g.code,advanceWidth:old.advanceWidth??font.unitsPerEm,leftSideBearing:old.leftSideBearing||0,path:p}));}}
+let out=new opentype.Font({familyName:(font.names.fontFamily?.en||originalFileName||'Edited Font')+' Edited',styleName:'Regular',unitsPerEm:font.unitsPerEm,ascender:font.ascender,descender:font.descender,glyphs:gs});let buf=out.toArrayBuffer(),blob=new Blob([buf],{type:'font/ttf'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=originalFileName+'-edited.ttf';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);toast('TTF exported')}catch(err){console.error(err);toast('Export failed: '+err.message)}};
+function bitmapPath(image,upm){let p=new opentype.Path(),d=image.data,scale=upm/BASE;for(let y=0;y<H;y++){let x=0;while(x<W){while(x<W&&d[(y*W+x)*4+3]<32)x++;if(x>=W)break;let x0=x;while(x<W&&d[(y*W+x)*4+3]>=32)x++;let x1=x;let l=(x0-OX)*scale,r=(x1-OX)*scale,top=(BASE-y)*scale,bot=(BASE-y-1)*scale;p.moveTo(l,top);p.lineTo(r,top);p.lineTo(r,bot);p.lineTo(l,bot);p.closePath()}}return p}
+$('exportBtn').disabled=true;
+})();
+</script>
+</body>
+</html>
