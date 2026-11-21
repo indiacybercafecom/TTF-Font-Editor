@@ -84,17 +84,25 @@
 <script>
 (()=> {
 const $=id=>document.getElementById(id), canvas=$('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
-let font=null, glyphs=[], current=null, tool='select', drawing=false,start=null,undoStack=[],redoStack=[],edits=new Map(),editedCodes=new Set(), originalFileName='EditedFont';
+let font=null, glyphs=[], current=null, tool='select', drawing=false,start=null,undoStack=[],redoStack=[],edits=new Map(),editedCodes=new Set(),transformStates=new Map(),transformState=null,originalFileName='EditedFont';
 const W=192,H=192,BASE=144,OX=24;
 function toast(s){$('toast').textContent=s;$('toast').classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.add('hidden'),2300)}
-function snapshot(){if(!current)return;undoStack.push({image:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0});if(undoStack.length>40)undoStack.shift();redoStack=[]}
-function saveCurrent(markEdited=true){if(!current)return;edits.set(current.code,{data:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0});if(markEdited)editedCodes.add(current.code)}
-function drawInitial(g){ctx.clearRect(0,0,W,H);let e=edits.get(g.code);if(e){ctx.putImageData(e.data,0,0);$('advance').value=e.advance;$('bearing').value=e.bearing}else{ctx.fillStyle='#000';let ch=String.fromCodePoint(g.code);let p=font.getPath(ch,OX,BASE,BASE);p.draw(ctx);centerInk();$('advance').value=g.advance;$('bearing').value=g.leftBearing||0}undoStack=[];redoStack=[];updateFrame();updatePreview()}
+function cloneTransformState(state=transformState){return state?{baseline:state.baseline,scaleX:state.scaleX,scaleY:state.scaleY,moveX:state.moveX,moveY:state.moveY}:null}
+function syncTransformControls(){if(!transformState)return;for(let [id,value] of [['sx',transformState.scaleX],['sy',transformState.scaleY]]){$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}))}$('moveX').value=transformState.moveX;$('moveY').value=transformState.moveY}
+function ensureTransformState(){if(!transformState)transformState={baseline:ctx.getImageData(0,0,W,H),scaleX:100,scaleY:100,moveX:0,moveY:0};if(current)transformStates.set(current.code,transformState);return transformState}
+function loadTransformState(g){transformState=transformStates.get(g.code)||{baseline:ctx.getImageData(0,0,W,H),scaleX:100,scaleY:100,moveX:0,moveY:0};transformStates.set(g.code,transformState);syncTransformControls()}
+function rebaseTransformState(){if(!current)return;transformState={baseline:ctx.getImageData(0,0,W,H),scaleX:100,scaleY:100,moveX:0,moveY:0};transformStates.set(current.code,transformState);syncTransformControls()}
+function renderTransformState(){let state=ensureTransformState(),source=document.createElement('canvas'),result=document.createElement('canvas');source.width=result.width=W;source.height=result.height=H;source.getContext('2d').putImageData(state.baseline,0,0);let t=result.getContext('2d');t.translate(W/2+state.moveX,H/2+state.moveY);t.scale(state.scaleX/100,state.scaleY/100);t.drawImage(source,-W/2,-H/2);ctx.clearRect(0,0,W,H);ctx.drawImage(result,0,0)}
+function historyState(){return{image:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0,transform:cloneTransformState()}}
+function restoreHistoryState(state){ctx.putImageData(state.image,0,0);$('advance').value=state.advance;$('bearing').value=state.bearing;transformState=cloneTransformState(state.transform)||{baseline:ctx.getImageData(0,0,W,H),scaleX:100,scaleY:100,moveX:0,moveY:0};if(current)transformStates.set(current.code,transformState);syncTransformControls();saveCurrent();updatePreview()}
+function snapshot(){if(!current)return;undoStack.push(historyState());if(undoStack.length>40)undoStack.shift();redoStack=[]}
+function saveCurrent(markEdited=true){if(!current)return;edits.set(current.code,{data:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0});if(transformState)transformStates.set(current.code,transformState);if(markEdited)editedCodes.add(current.code)}
+function drawInitial(g){ctx.clearRect(0,0,W,H);let e=edits.get(g.code);if(e){ctx.putImageData(e.data,0,0);$('advance').value=e.advance;$('bearing').value=e.bearing}else{ctx.fillStyle='#000';let ch=String.fromCodePoint(g.code);let p=font.getPath(ch,OX,BASE,BASE);p.draw(ctx);centerInk();$('advance').value=g.advance;$('bearing').value=g.leftBearing||0}loadTransformState(g);undoStack=[];redoStack=[];updateFrame();updatePreview()}
 function updatePreview(){updateFrame();if(!current)return;let c=document.createElement('canvas');c.width=96;c.height=96;let x=c.getContext('2d');x.drawImage(canvas,0,0,96,96);$('livePreview').style.color=$('inkColor').value;$('livePreview').style.background=$('bgColor').value;$('livePreview').style.padding='8px';$('livePreview').style.fontFamily='sans-serif';$('livePreview').textContent=String.fromCodePoint(current.code);$('selectedInfo').textContent=`U+${current.code.toString(16).toUpperCase().padStart(4,'0')} · ${current.name}`;}
 function renderList(){let q=$('filter').value.toLowerCase(),list=glyphs.filter(g=>String.fromCodePoint(g.code).toLowerCase().includes(q)||g.code.toString(16).includes(q)||g.name.toLowerCase().includes(q));$('glyphGrid').innerHTML='';for(let g of list){let b=document.createElement('button');b.className='glyph'+(current&&current.code===g.code?' selected':'');let ch=String.fromCodePoint(g.code);b.innerHTML=`<span>${ch===' '?'␠':escapeHtml(ch)}</span><span class="code">${g.code.toString(16).toUpperCase()}</span>`;b.title=`${g.name} · U+${g.code.toString(16).toUpperCase()}`;b.onclick=()=>selectGlyph(g);$('glyphGrid').appendChild(b)}$('glyphCount').textContent=list.length+' shown'}
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function selectGlyph(g){saveCurrent(false);current=g;drawInitial(g);renderList()}
-$('fontFile').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;try{let buf=await f.arrayBuffer();font=opentype.parse(buf);originalFileName=f.name.replace(/\.(ttf|otf)$/i,'');glyphs=[];edits.clear();editedCodes.clear();let cmap=font.tables.cmap.glyphIndexMap;for(let [cp,idx] of Object.entries(cmap)){let n=+cp;if(!Number.isInteger(n)||n>0x10ffff)continue;let og=font.glyphs.get(idx);glyphs.push({code:n,index:idx,name:og.name||'uni'+n.toString(16),advance:og.advanceWidth??font.unitsPerEm,leftBearing:og.leftSideBearing||0})}glyphs.sort((a,b)=>a.code-b.code);$('fontStatus').textContent=`${f.name} · ${font.unitsPerEm} UPM · ${font.names.fontFamily?.en||'Imported font'}`;$('dot').classList.add('ok');$('countLabel').textContent=glyphs.length+' mapped characters';$('exportBtn').disabled=false;$('filter').value='';renderList();if(glyphs.length)selectGlyph(glyphs.find(g=>g.code===65)||glyphs[0]);toast('Font imported successfully')}catch(err){console.error(err);toast('Could not read font: '+err.message)}});
+$('fontFile').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;try{let buf=await f.arrayBuffer();font=opentype.parse(buf);originalFileName=f.name.replace(/\.(ttf|otf)$/i,'');glyphs=[];edits.clear();editedCodes.clear();transformStates.clear();transformState=null;current=null;let cmap=font.tables.cmap.glyphIndexMap;for(let [cp,idx] of Object.entries(cmap)){let n=+cp;if(!Number.isInteger(n)||n>0x10ffff)continue;let og=font.glyphs.get(idx);glyphs.push({code:n,index:idx,name:og.name||'uni'+n.toString(16),advance:og.advanceWidth??font.unitsPerEm,leftBearing:og.leftSideBearing||0})}glyphs.sort((a,b)=>a.code-b.code);$('fontStatus').textContent=`${f.name} · ${font.unitsPerEm} UPM · ${font.names.fontFamily?.en||'Imported font'}`;$('dot').classList.add('ok');$('countLabel').textContent=glyphs.length+' mapped characters';$('exportBtn').disabled=false;$('filter').value='';renderList();if(glyphs.length)selectGlyph(glyphs.find(g=>g.code===65)||glyphs[0]);toast('Font imported successfully')}catch(err){console.error(err);toast('Could not read font: '+err.message)}});
 $('filter').oninput=renderList;
 document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('[data-tool]').forEach(x=>{x.classList.toggle('active',x===b&&x.id!=='selectTool');x.classList.toggle('active-select',x===b&&x.id==='selectTool')});canvas.style.cursor=tool==='pencil'||tool==='eraser'?'crosshair':'cell';$('selectionFrame').style.pointerEvents=tool==='select'?'auto':'none';updateFrame()});
 $('brush').oninput=e=>$('brushVal').textContent=e.target.value+' px';
@@ -104,28 +112,28 @@ function stroke(a,b,erase=false){ctx.save();let size=Math.max(1,+$('brush').valu
 function shape(a,b){ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=+$('brush').value;ctx.beginPath();if(tool==='line'){ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y)}else ctx.rect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.stroke();ctx.restore()}
 canvas.addEventListener('pointerdown',e=>{if(!current||tool==='select')return;e.preventDefault();if(canvas.setPointerCapture)canvas.setPointerCapture(e.pointerId);snapshot();drawing=true;start=pos(e);$('coords').textContent=`X: ${start.x} Y: ${start.y}`;if(tool==='eraser')stroke(start,start,true);else if(tool==='pencil')stroke(start,start,false)});
 canvas.addEventListener('pointermove',e=>{let p=pos(e);$('coords').textContent=`X: ${p.x} Y: ${p.y}`;if(!drawing)return;e.preventDefault();if(tool==='eraser'){stroke(start,p,true);start=p}else if(tool==='pencil'){stroke(start,p,false);start=p}});
-canvas.addEventListener('pointerup',e=>{if(!drawing)return;e.preventDefault();let p=pos(e);if(tool==='line'||tool==='rect')shape(start,p);drawing=false;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);saveCurrent();updatePreview()});
-canvas.addEventListener('pointercancel',e=>{if(!drawing)return;drawing=false;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);saveCurrent();updatePreview()});
-canvas.addEventListener('lostpointercapture',e=>{if(drawing){drawing=false;saveCurrent();updatePreview()}});
+canvas.addEventListener('pointerup',e=>{if(!drawing)return;e.preventDefault();let p=pos(e);if(tool==='line'||tool==='rect')shape(start,p);drawing=false;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);rebaseTransformState();saveCurrent();updatePreview()});
+canvas.addEventListener('pointercancel',e=>{if(!drawing)return;drawing=false;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);rebaseTransformState();saveCurrent();updatePreview()});
+canvas.addEventListener('lostpointercapture',e=>{if(drawing){drawing=false;rebaseTransformState();saveCurrent();updatePreview()}});
 let frameDrag=null,frameImage=null;
-function endFrameDrag(e){if(!frameDrag)return;let id=e&&e.pointerId!=null?e.pointerId:null;frameDrag=null;let captureElement=$('selectionFrame');if(id!=null&&captureElement.hasPointerCapture&&captureElement.hasPointerCapture(id))captureElement.releasePointerCapture(id);frameImage=null;saveCurrent();updatePreview()}
+function endFrameDrag(e){if(!frameDrag)return;let id=e&&e.pointerId!=null?e.pointerId:null;frameDrag=null;let captureElement=$('selectionFrame');if(id!=null&&captureElement.hasPointerCapture&&captureElement.hasPointerCapture(id))captureElement.releasePointerCapture(id);frameImage=null;rebaseTransformState();saveCurrent();updatePreview()}
 $('selectionFrame').addEventListener('pointerdown',e=>{if(!current||tool!=='select')return;e.preventDefault();e.stopPropagation();snapshot();frameImage=document.createElement('canvas');frameImage.width=W;frameImage.height=H;frameImage.getContext('2d').drawImage(canvas,0,0);let box=getInkBounds();if(!box)return;let h=e.target.dataset?.h||'move',p=pos(e);frameDrag={h,start:p,box:{l:box.l,t:box.t,r:box.r+1,b:box.b+1},pointerId:e.pointerId,shift:e.shiftKey};if($('selectionFrame').setPointerCapture)$('selectionFrame').setPointerCapture(e.pointerId)});
 $('selectionFrame').addEventListener('pointermove',e=>{if(!frameDrag)return;e.preventDefault();let p=pos(e),h=frameDrag.h,b=frameDrag.box,sw=b.r-b.l,sh=b.b-b.t;if(h==='move'){let dx=p.x-frameDrag.start.x,dy=p.y-frameDrag.start.y;dx=Math.max(-b.l,Math.min(W-b.r,dx));dy=Math.max(-b.t,Math.min(H-b.b,dy));let tmp=document.createElement('canvas');tmp.width=sw;tmp.height=sh;tmp.getContext('2d').drawImage(frameImage,b.l,b.t,sw,sh,0,0,sw,sh);ctx.clearRect(0,0,W,H);ctx.drawImage(frameImage,0,0);ctx.clearRect(b.l,b.t,sw,sh);ctx.drawImage(tmp,b.l+dx,b.t+dy)}else{let l=b.l,t=b.t,r=b.r,s=b.b,isCorner=h.length===2;if(isCorner&&e.shiftKey){let oldW=r-l,oldH=s-t,anchorX=h.includes('w')?r:l,anchorY=h.includes('n')?s:t,rawW=h.includes('w')?anchorX-p.x:p.x-anchorX,rawH=h.includes('n')?anchorY-p.y:p.y-anchorY,scale=Math.max(rawW/oldW,rawH/oldH);let maxScale=h.includes('w')?(h.includes('n')?Math.min(anchorX/oldW,anchorY/oldH):Math.min(anchorX/oldW,(H-anchorY)/oldH)):(h.includes('n')?Math.min((W-anchorX)/oldW,anchorY/oldH):Math.min((W-anchorX)/oldW,(H-anchorY)/oldH));scale=Math.max(Math.min(8/oldW,8/oldH),Math.min(scale,maxScale||scale));let nw=Math.max(8,Math.round(oldW*scale)),nh=Math.max(8,Math.round(oldH*scale));if(h.includes('w')){l=anchorX-nw;r=anchorX}else{l=anchorX;r=anchorX+nw}if(h.includes('n')){t=anchorY-nh;s=anchorY}else{t=anchorY;s=anchorY+nh}}else{if(h.includes('w'))l=Math.max(0,Math.min(r-8,p.x));if(h.includes('e'))r=Math.max(l+8,Math.min(W,p.x+1));if(h.includes('n'))t=Math.max(0,Math.min(s-8,p.y));if(h.includes('s'))s=Math.max(t+8,Math.min(H,p.y+1))}l=Math.max(0,l);t=Math.max(0,t);r=Math.min(W,r);s=Math.min(H,s);if(r-l<8||s-t<8)return;let tmp=document.createElement('canvas');tmp.width=sw;tmp.height=sh;tmp.getContext('2d').drawImage(frameImage,b.l,b.t,sw,sh,0,0,sw,sh);ctx.clearRect(0,0,W,H);ctx.drawImage(frameImage,0,0);ctx.clearRect(b.l,b.t,sw,sh);ctx.drawImage(tmp,l,t,r-l,s-t)}updateFrame();updatePreview()});
 $('selectionFrame').addEventListener('pointerup',endFrameDrag);
 $('selectionFrame').addEventListener('pointercancel',endFrameDrag);
 $('selectionFrame').addEventListener('lostpointercapture',e=>{if(frameDrag)endFrameDrag(e)});
-$('undo').onclick=()=>{if(!undoStack.length)return;redoStack.push({image:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0});let state=undoStack.pop();ctx.putImageData(state.image,0,0);$('advance').value=state.advance;$('bearing').value=state.bearing;saveCurrent();updatePreview()};
-$('redo').onclick=()=>{if(!redoStack.length)return;undoStack.push({image:ctx.getImageData(0,0,W,H),advance:+$('advance').value||font.unitsPerEm,bearing:+$('bearing').value||0});let state=redoStack.pop();ctx.putImageData(state.image,0,0);$('advance').value=state.advance;$('bearing').value=state.bearing;saveCurrent();updatePreview()};
-$('clear').onclick=()=>{if(!current)return;snapshot();ctx.clearRect(0,0,W,H);saveCurrent();updatePreview()};
-function transform(fn){if(!current)return;snapshot();let tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;let t=tmp.getContext('2d');fn(t);ctx.clearRect(0,0,W,H);ctx.drawImage(tmp,0,0);saveCurrent();updatePreview()}
+$('undo').onclick=()=>{if(!undoStack.length)return;redoStack.push(historyState());restoreHistoryState(undoStack.pop())};
+$('redo').onclick=()=>{if(!redoStack.length)return;undoStack.push(historyState());restoreHistoryState(redoStack.pop())};
+$('clear').onclick=()=>{if(!current)return;snapshot();ctx.clearRect(0,0,W,H);rebaseTransformState();saveCurrent();updatePreview()};
+function transform(fn){if(!current)return;snapshot();let tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;let t=tmp.getContext('2d');fn(t);ctx.clearRect(0,0,W,H);ctx.drawImage(tmp,0,0);rebaseTransformState();saveCurrent();updatePreview()}
 $('rotate').onclick=()=>transform(t=>{t.translate(W/2,H/2);t.rotate(Math.PI/2);t.drawImage(canvas,-W/2,-H/2)});
 $('flipH').onclick=()=>transform(t=>{t.translate(W,0);t.scale(-1,1);t.drawImage(canvas,0,0)});
 $('flipV').onclick=()=>transform(t=>{t.translate(0,H);t.scale(1,-1);t.drawImage(canvas,0,0)});
-$('invert').onclick=()=>{if(!current)return;snapshot();let im=ctx.getImageData(0,0,W,H);for(let i=0;i<im.data.length;i+=4)if(im.data[i+3]){let v=im.data[i]<128?255:0;im.data[i]=im.data[i+1]=im.data[i+2]=v;if(v===255)im.data[i+3]=0}ctx.putImageData(im,0,0);saveCurrent();updatePreview()};
-$('crop').onclick=()=>{if(!current)return;let im=ctx.getImageData(0,0,W,H),d=im.data,minX=W,minY=H,maxX=-1,maxY=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(d[(y*W+x)*4+3]>0){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}if(maxX<0)return toast('Glyph is empty');snapshot();let tmp=ctx.getImageData(minX,minY,maxX-minX+1,maxY-minY+1);ctx.clearRect(0,0,W,H);ctx.putImageData(tmp,Math.round((W-tmp.width)/2),Math.round((H-tmp.height)/2));saveCurrent();updatePreview()};
-$('applyScale').onclick=()=>{let sx=+$('sx').value/100,sy=+$('sy').value/100;transform(t=>{t.translate(W/2,H/2);t.scale(sx,sy);t.drawImage(canvas,-W/2,-H/2)});$('sxVal').textContent=$('sx').value+'%';$('syVal').textContent=$('sy').value+'%'};
+$('invert').onclick=()=>{if(!current)return;snapshot();let im=ctx.getImageData(0,0,W,H);for(let i=0;i<im.data.length;i+=4)if(im.data[i+3]){let v=im.data[i]<128?255:0;im.data[i]=im.data[i+1]=im.data[i+2]=v;if(v===255)im.data[i+3]=0}ctx.putImageData(im,0,0);rebaseTransformState();saveCurrent();updatePreview()};
+$('crop').onclick=()=>{if(!current)return;let im=ctx.getImageData(0,0,W,H),d=im.data,minX=W,minY=H,maxX=-1,maxY=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(d[(y*W+x)*4+3]>0){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}if(maxX<0)return toast('Glyph is empty');snapshot();let tmp=ctx.getImageData(minX,minY,maxX-minX+1,maxY-minY+1);ctx.clearRect(0,0,W,H);ctx.putImageData(tmp,Math.round((W-tmp.width)/2),Math.round((H-tmp.height)/2));rebaseTransformState();saveCurrent();updatePreview()};
+$('applyScale').onclick=()=>{if(!current)return;let state=ensureTransformState(),sx=+$('sx').value,sy=+$('sy').value;if(sx===state.scaleX&&sy===state.scaleY)return;snapshot();state.scaleX=sx;state.scaleY=sy;renderTransformState();saveCurrent();updatePreview()};
 $('sx').oninput=e=>$('sxVal').textContent=e.target.value+'%';$('sy').oninput=e=>$('syVal').textContent=e.target.value+'%';
-$('applyMove').onclick=()=>{let x=+$('moveX').value,y=+$('moveY').value;transform(t=>t.drawImage(canvas,x,y))};
+$('applyMove').onclick=()=>{if(!current)return;let state=ensureTransformState(),x=+$('moveX').value,y=+$('moveY').value;if(x===state.moveX&&y===state.moveY)return;snapshot();state.moveX=x;state.moveY=y;renderTransformState();saveCurrent();updatePreview()};
 $('gridToggle').onclick=()=>{let enabled=$('gridToggle').getAttribute('aria-pressed')!=='true';$('gridToggle').setAttribute('aria-pressed',String(enabled));$('gridToggle').classList.toggle('active',enabled);updateFrame();$('gridOverlay').style.display=enabled?'block':'none'};
 $('advance').onchange=saveCurrent;$('bearing').onchange=saveCurrent;$('inkColor').oninput=updatePreview;
 $('exportBtn').onclick=()=>{if(!font)return;saveCurrent(false);try{let gs=[],notdef=new opentype.Glyph({name:'.notdef',unicode:0,advanceWidth:font.unitsPerEm,path:new opentype.Path()});gs.push(notdef);let seen=new Set([0]);for(let g of glyphs){if(seen.has(g.code))continue;seen.add(g.code);let edit=editedCodes.has(g.code)?edits.get(g.code):null,old=font.glyphs.get(g.index),path;if(edit){path=bitmapPath(edit.data,font.unitsPerEm);gs.push(new opentype.Glyph({name:g.name,unicode:g.code,advanceWidth:edit.advance,leftSideBearing:edit.bearing,path}));}else{let commands=old.path.commands.map(c=>({...c}));let p=new opentype.Path();p.commands=commands;gs.push(new opentype.Glyph({name:g.name,unicode:g.code,advanceWidth:old.advanceWidth??font.unitsPerEm,leftSideBearing:old.leftSideBearing||0,path:p}));}}
@@ -137,8 +145,93 @@ function buildGrid(){let grid=$('gridOverlay');for(let n=0;n<=W;n+=24){let posit
 buildGrid();
 function centerInk(){let box=getInkBounds();if(!box)return;let margin=12,maxSize=W-margin*2,scale=Math.min(maxSize/box.w,maxSize/box.h,1);let nw=Math.max(1,Math.round(box.w*scale)),nh=Math.max(1,Math.round(box.h*scale));let tmp=document.createElement('canvas');tmp.width=box.w;tmp.height=box.h;tmp.getContext('2d').drawImage(canvas,box.l,box.t,box.w,box.h,0,0,box.w,box.h);let dx=Math.round((W-nw)/2),dy=Math.round((H-nh)/2);ctx.clearRect(0,0,W,H);ctx.drawImage(tmp,dx,dy,nw,nh)}
 function updateFrame(){let canvasRect=canvas.getBoundingClientRect(),wrapRect=$('canvas').parentElement.getBoundingClientRect(),sx=canvasRect.width/W,sy=canvasRect.height/H,offsetX=canvasRect.left-wrapRect.left,offsetY=canvasRect.top-wrapRect.top,grid=$('gridOverlay'),frame=$('selectionFrame');grid.style.left=offsetX+'px';grid.style.top=offsetY+'px';grid.style.width=canvasRect.width+'px';grid.style.height=canvasRect.height+'px';let box=getInkBounds();if(!box||!current){frame.style.display='none';return}frame.style.display='block';frame.style.left=(offsetX+box.l*sx)+'px';frame.style.top=(offsetY+box.t*sy)+'px';frame.style.width=(box.w*sx)+'px';frame.style.height=(box.h*sy)+'px'}
-$('autoAlign').onclick=()=>{if(!current)return;let box=getInkBounds();if(!box)return toast('Cannot auto align an empty glyph.');let left=Math.round((W-box.w)/2),top=Math.round((H-box.h)/2),dx=left-box.l,dy=top-box.t;if(!dx&&!dy)return toast('Glyph is already centered.');snapshot();let pixels=ctx.getImageData(box.l,box.t,box.w,box.h);ctx.clearRect(0,0,W,H);ctx.putImageData(pixels,left,top);saveCurrent();updatePreview();updateFrame();toast('Glyph aligned to canvas center.')};
-function setupRangeEditors(){document.querySelectorAll('input[type="range"]').forEach(range=>{let label=range.closest('.field')?.querySelector('label');if(!label)return;let display=label.querySelector('b');if(!display){display=document.createElement('b');display.textContent=range.value;label.appendChild(display)}display.classList.add('range-value');display.setAttribute('role','button');display.setAttribute('tabindex','0');display.setAttribute('aria-label','Edit slider value');let initialText=display.textContent,match=initialText.match(/^\s*[-+]?(?:\d+\.?\d*|\.\d+)/),suffix=match?initialText.slice(match[0].length):'';let editor=null,initialValue='',lastValid=range.value;const showValue=()=>{display.textContent=range.value+suffix};const setRangeValue=value=>{let min=range.min===''?0:Number(range.min),max=range.max===''?100:Number(range.max),stepAttr=range.step||'1',step=stepAttr==='any'?null:Number(stepAttr)||1,base=range.getAttribute('min')!==null?min:Number(range.getAttribute('value')||0),next=Math.max(min,Math.min(max,Number(value)));if(step!==null)next=base+Math.round((next-base)/step)*step;next=Math.max(min,Math.min(max,next));range.value=String(Number(next.toPrecision(12)));range.dispatchEvent(new Event('input',{bubbles:true}))};const closeEditor=commit=>{if(!editor)return;let restore=commit?lastValid:initialValue;editor.removeEventListener('blur',onBlur);editor.remove();editor=null;display.hidden=false;setRangeValue(restore);lastValid=range.value;showValue()};const onBlur=()=>closeEditor(true);const openEditor=()=>{if(editor)return;initialValue=range.value;lastValid=range.value;editor=document.createElement('input');editor.type='number';editor.className='range-value-editor';editor.inputMode='decimal';editor.min=range.min;editor.max=range.max;editor.step=range.step||'1';editor.value=range.value;editor.setAttribute('aria-label','Slider value');editor.addEventListener('input',()=>{if(editor.value===''||!Number.isFinite(editor.valueAsNumber))return;setRangeValue(editor.valueAsNumber);lastValid=range.value});editor.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();closeEditor(true)}else if(e.key==='Escape'){e.preventDefault();closeEditor(false)}});editor.addEventListener('blur',onBlur);display.hidden=true;display.after(editor);editor.focus();editor.select()};display.addEventListener('click',openEditor);display.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openEditor()}});range.addEventListener('input',()=>{showValue();if(editor)lastValid=range.value});showValue()})}
+$('autoAlign').onclick=()=>{if(!current)return;let box=getInkBounds();if(!box)return toast('Cannot auto align an empty glyph.');let left=Math.round((W-box.w)/2),top=Math.round((H-box.h)/2),dx=left-box.l,dy=top-box.t;if(!dx&&!dy)return toast('Glyph is already centered.');snapshot();let pixels=ctx.getImageData(box.l,box.t,box.w,box.h);ctx.clearRect(0,0,W,H);ctx.putImageData(pixels,left,top);rebaseTransformState();saveCurrent();updatePreview();updateFrame();toast('Glyph aligned to canvas center.')};
+function setupRangeEditors(){
+ document.querySelectorAll('input[type="range"]').forEach(range=>{
+  let label=range.closest('.field')?.querySelector('label');
+  if(!label)return;
+  let display=label.querySelector('b');
+  if(!display){display=document.createElement('b');display.textContent=range.value;label.appendChild(display)}
+  display.classList.add('range-value');
+  display.setAttribute('role','button');
+  display.setAttribute('tabindex','0');
+  display.setAttribute('aria-label','Edit slider value');
+  let initialText=display.textContent,match=initialText.match(/^\s*[-+]?(?:\d+\.?\d*|\.\d+)/),suffix=match?initialText.slice(match[0].length):'';
+  let editor=null,originalValue='',pendingValue='';
+  const showValue=()=>{display.textContent=range.value+suffix};
+  const normalizeValue=value=>{
+   let numeric=Number(value);
+   if(!Number.isFinite(numeric))return null;
+   let min=range.min===''?0:Number(range.min),max=range.max===''?100:Number(range.max),stepAttr=range.step||'1',step=stepAttr==='any'?null:Number(stepAttr)||1,base=range.getAttribute('min')!==null?min:Number(range.getAttribute('value')||0),next=Math.max(min,Math.min(max,numeric));
+   if(step!==null)next=base+Math.round((next-base)/step)*step;
+   next=Math.max(min,Math.min(max,next));
+   return String(Number(next.toPrecision(12)));
+  };
+  const applyValue=value=>{
+   let normalized=normalizeValue(value);
+   if(normalized===null)return;
+   if(range.value===normalized){showValue();return}
+   range.value=normalized;
+   range.dispatchEvent(new Event('input',{bubbles:true}));
+  };
+  const openEditor=()=>{
+   if(editor)return;
+   originalValue=range.value;
+  let activeEditor=document.createElement('input'),finished=false;
+   editor=activeEditor;
+   activeEditor.type='number';
+   activeEditor.className='range-value-editor';
+   activeEditor.inputMode='decimal';
+   activeEditor.min=range.min;
+   activeEditor.max=range.max;
+   activeEditor.step=range.step||'1';
+   activeEditor.value=originalValue;
+   activeEditor.setAttribute('aria-label','Slider value');
+   const cleanup=()=>{
+    if(finished)return false;
+    finished=true;
+    activeEditor.removeEventListener('input',onInput);
+    activeEditor.removeEventListener('keydown',onKeydown);
+    activeEditor.removeEventListener('blur',onBlur);
+    if(editor===activeEditor)editor=null;
+    activeEditor.remove();
+    display.hidden=false;
+    showValue();
+    return true;
+   };
+   const commit=()=>{
+    if(finished||editor!==activeEditor)return;
+    let value=pendingValue.trim()===''||!Number.isFinite(Number(pendingValue))?originalValue:pendingValue;
+    if(!cleanup())return;
+    applyValue(value);
+   };
+   const cancel=()=>{
+    if(!cleanup())return;
+    if(range.value!==originalValue)applyValue(originalValue);
+   };
+   const onInput=()=>{pendingValue=activeEditor.value};
+   const onKeydown=e=>{
+    if(e.key==='Enter'){e.preventDefault();e.stopPropagation();commit()}
+    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();cancel()}
+   };
+   const onBlur=()=>commit();
+   activeEditor.addEventListener('input',onInput);
+   activeEditor.addEventListener('keydown',onKeydown);
+   activeEditor.addEventListener('blur',onBlur);
+   display.hidden=true;
+   display.after(activeEditor);
+   activeEditor.focus();
+   activeEditor.select();
+  };
+  display.addEventListener('click',openEditor);
+  display.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openEditor()}});
+  range.addEventListener('input',()=>{
+   showValue();
+  if(editor){editor.value=range.value;pendingValue=range.value}
+  });
+  showValue();
+ });
+}
 setupRangeEditors();
 window.addEventListener('resize',updateFrame);
 if(window.ResizeObserver)new ResizeObserver(updateFrame).observe(canvas);
